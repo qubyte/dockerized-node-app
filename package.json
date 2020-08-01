@@ -1,0 +1,19 @@
+{
+  "name": "dockerized-node-app",
+  "version": "0.0.0",
+  "description": "Example of a dockerized node app.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/qubyte/dockerized-node-app.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/qubyte/dockerized-node-app/issues"
+  },
+  "homepage": "https://github.com/qubyte/dockerized-node-app#readme"
+}
