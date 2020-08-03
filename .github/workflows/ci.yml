@@ -1,9 +1,5 @@
 name: CI
 on:
-  push:
-    branches:
-    - main
-    - staging
   pull_request:
     branches:
     - main
@@ -32,44 +28,3 @@ jobs:
         node-version: 12.x
     - run: npm ci
     - run: npm run lint
-
-  build:
-    runs-on: ubuntu-latest
-    needs: [test, lint]
-    if: ${{ github.ref == 'main' }} # only build main
-    steps:
-    - name: checkout
-      uses: actions/checkout@master
-    - name: put token in secrets file
-      run: 'echo "$NPM_TOKEN" > npm-token.txt'
-      env:
-        NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-    - name: configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v1
-      with:
-        aws-access-key-id: ${{ secrets.PRODUCTION_AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.PRODUCTION_AWS_SECRET_ACCESS_KEY }}
-        aws-region: eu-west-2
-    - name: login to ECR
-      id: login-ecr
-      uses: aws-actions/amazon-ecr-login@v1
-    - name: build, tag, and push
-      env:
-        IMAGE_ID: "${{ steps.login-ecr.outputs.registry }}/dockerized-node-app:${{ github.sha }}"
-      run: |
-        DOCKER_BUILDKIT=1 docker build --secret id=npm-token,src=npm-token.txt -t ${IMAGE_ID} -t ${{ steps.login-ecr.outputs.registry }}/dockerized-node-app:latest .
-        docker push ${IMAGE_ID}
-    - name: render task definition
-      run: envsubst < ./.circleci/task-definition.json > rendered-task-definition.json
-      env:
-        DEPLOYMENT_ENV: production
-        IMAGE_ID: "${{ steps.login-ecr.outputs.registry }}/dockerized-node-app:${{ github.sha }}"
-    - name: deploy task definition
-      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
-      with:
-        task-definition: rendered-task-definition.json
-        service: sample-app-service
-        cluster: default
-    - name: Logout of Amazon ECR
-      if: always()
-      run: docker logout ${{ steps.login-ecr.outputs.registry }}
