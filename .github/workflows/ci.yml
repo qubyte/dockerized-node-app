@@ -4,6 +4,11 @@ on:
     branches:
     - main
     - staging
+  push:
+    branches:
+    - main
+    - staging
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -14,8 +19,12 @@ jobs:
       uses: actions/setup-node@v1
       with:
         node-version: 12.x
-    - run: npm ci
-    - run: npm test
+    - name: create .npmrc
+      run: echo //registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }} >> .npmrc
+    - name: install packages
+      run: npm ci
+    - name: run tests
+      run: npm test
 
   lint:
     runs-on: ubuntu-latest
@@ -26,5 +35,55 @@ jobs:
       uses: actions/setup-node@v1
       with:
         node-version: 12.x
-    - run: npm ci
-    - run: npm run lint
+    - name: create .npmrc
+      run: echo //registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }} >> .npmrc
+    - name: install packages
+      run: npm ci
+    - name: run lint
+      run: npm run lint
+
+  build:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    needs: ["test", "lint"]
+    steps:
+    - name: checkout
+      uses: actions/checkout@master
+    - name: put token in secrets file
+      run: 'echo "$NPM_TOKEN" > npmtoken'
+      env:
+        NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+    - name: configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.PRODUCTION_AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.PRODUCTION_AWS_SECRET_ACCESS_KEY }}
+        aws-region: eu-west-2
+    - name: login to ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+    - name: set image name
+      id: determine-image-name
+      run: echo "::set-output name=image::${{ steps.login-ecr.outputs.registry }}/dockerized-node-app:${{ github.sha }}"
+    - name: build and tag image
+      env:
+        DOCKER_BUILDKIT: "1"
+      run: |
+        docker build --secret id=npmtoken,src=npmtoken -t ${{ steps.determine-image-name.outputs.image }} .
+    - name: push image
+      run:
+        docker push ${{ steps.determine-image-name.outputs.image }}
+    - name: render task definition
+      run: envsubst < ./task-definition.json > ./rendered-task-definition.json
+      env:
+        DEPLOYMENT_ENV: production
+        IMAGE_ID: ${{ steps.determine-image-name.outputs.image }}
+    - name: deploy task definition
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      with:
+        task-definition: ./rendered-task-definition.json
+        service: dockerized-node-app
+        cluster: default
+    - name: logout of ECR
+      if: always()
+      run: docker logout ${{ steps.login-ecr.outputs.registry }}
