@@ -1,4 +1,4 @@
-name: CI
+name: DEPLOY
 on:
   push:
     branches:
@@ -11,7 +11,7 @@ jobs:
     - name: checkout
       uses: actions/checkout@master
     - name: put token in secrets file
-      run: 'echo "$NPM_TOKEN" > npm-token.txt'
+      run: 'echo "$NPM_TOKEN" > npmtoken'
       env:
         NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
     - name: configure AWS credentials
@@ -26,19 +26,20 @@ jobs:
     - name: build, tag, and push
       env:
         IMAGE_ID: "${{ steps.login-ecr.outputs.registry }}/dockerized-node-app:${{ github.sha }}"
+        DOCKER_BUILDKIT: "1"
       run: |
-        DOCKER_BUILDKIT=1 docker build --secret id=npm-token,src=npm-token.txt -t ${IMAGE_ID} -t ${{ steps.login-ecr.outputs.registry }}/dockerized-node-app:latest .
+        docker build --secret id=npmtoken,src=npmtoken -t ${IMAGE_ID} -t ${{ steps.login-ecr.outputs.registry }}/dockerized-node-app:latest .
         docker push ${IMAGE_ID}
     - name: render task definition
-      run: envsubst < ./.circleci/task-definition.json > rendered-task-definition.json
+      run: envsubst < ./task-definition.json > ./rendered-task-definition.json
       env:
         DEPLOYMENT_ENV: production
         IMAGE_ID: "${{ steps.login-ecr.outputs.registry }}/dockerized-node-app:${{ github.sha }}"
     - name: deploy task definition
       uses: aws-actions/amazon-ecs-deploy-task-definition@v1
       with:
-        task-definition: rendered-task-definition.json
-        service: sample-app-service
+        task-definition: ./rendered-task-definition.json
+        service: dockerized-node-app
         cluster: default
     - name: Logout of Amazon ECR
       if: always()

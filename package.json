@@ -20,5 +20,8 @@
   "devDependencies": {
     "eslint": "^7.6.0",
     "eslint-config-qubyte": "^3.0.0"
+  },
+  "dependencies": {
+    "@get-impala/hapi-logger": "^10.0.4"
   }
 }

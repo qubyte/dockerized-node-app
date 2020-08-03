@@ -24,7 +24,7 @@
       },
       "portMappings": [
         {
-          "hostPort": 80,
+          "hostPort": 8000,
           "protocol": "tcp",
           "containerPort": 8000
         }
@@ -36,6 +36,5 @@
   ],
   "requiresCompatibilities": ["FARGATE"],
   "cpu": "256",
-  "memory": "null",
-  "taskRoleArn": "arn:aws:ecs:eu-west-2:686041722102:task-definition/dockerized-node-app:1"
+  "memory": "512"
 }
