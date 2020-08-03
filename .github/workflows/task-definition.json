@@ -1,0 +1,41 @@
+{
+  "family": "dockerized-node-app",
+  "executionRoleArn": "arn:aws:iam::686041722102:role/ecsTaskExecutionRole",
+  "networkMode": "awsvpc",
+  "containerDefinitions": [
+    {
+      "environment": [
+        {
+          "name": "DEPLOYMENT_ENV",
+          "value": "${DEPLOYMEN_ENV}"
+        }
+      ],
+      "essential": true,
+      "image": "${IMAGE_ID}",
+      "name": "app",
+      "volumesFrom": [],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/dockerized-node-app",
+          "awslogs-region": "eu-west-2",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "portMappings": [
+        {
+          "hostPort": 80,
+          "protocol": "tcp",
+          "containerPort": 8000
+        }
+      ],
+      "linuxParameters": {
+        "initProcessEnabled": true
+      }
+    }
+  ],
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "null",
+  "taskRoleArn": "arn:aws:ecs:eu-west-2:686041722102:task-definition/dockerized-node-app:1"
+}
