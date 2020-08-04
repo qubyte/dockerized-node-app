@@ -23,18 +23,22 @@ jobs:
     - name: login to ECR
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v1
-    - name: build, tag, and push
+    - name: set image name
+      id: determine-image-name
+      run: echo "::set-output name=image::${{ steps.login-ecr.outputs.registry }}/dockerized-node-app:${{ github.sha }}"
+    - name: build and tag image
       env:
-        IMAGE_ID: "${{ steps.login-ecr.outputs.registry }}/dockerized-node-app:${{ github.sha }}"
         DOCKER_BUILDKIT: "1"
       run: |
-        docker build --secret id=npmtoken,src=npmtoken -t ${IMAGE_ID} -t ${{ steps.login-ecr.outputs.registry }}/dockerized-node-app:latest .
-        docker push ${IMAGE_ID}
+        docker build --secret id=npmtoken,src=npmtoken -t ${{ steps.determine-image-name.outputs.image }} .
+    - name: push image
+      run:
+        docker push ${{ steps.determine-image-name.outputs.image }}
     - name: render task definition
       run: envsubst < ./task-definition.json > ./rendered-task-definition.json
       env:
         DEPLOYMENT_ENV: production
-        IMAGE_ID: "${{ steps.login-ecr.outputs.registry }}/dockerized-node-app:${{ github.sha }}"
+        IMAGE_ID: ${{ steps.determine-image-name.outputs.image }}
     - name: deploy task definition
       uses: aws-actions/amazon-ecs-deploy-task-definition@v1
       with:
