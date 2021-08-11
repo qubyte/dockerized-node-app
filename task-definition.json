@@ -7,7 +7,7 @@
       "environment": [
         {
           "name": "DEPLOYMENT_ENV",
-          "value": "${DEPLOYMEN_ENV}"
+          "value": "${DEPLOYMENT_ENV}"
         }
       ],
       "essential": true,
